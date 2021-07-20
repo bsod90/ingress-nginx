@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/eapache/channels"
+	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -592,6 +593,24 @@ func New(
 	}
 
 	serviceHandler := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			svc := obj.(*corev1.Service)
+			if svc.Spec.Type == apiv1.ServiceTypeExternalName {
+				updateCh.In() <- Event{
+					Type: CreateEvent,
+					Obj:  obj,
+				}
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			svc := obj.(*corev1.Service)
+			if svc.Spec.Type == apiv1.ServiceTypeExternalName {
+				updateCh.In() <- Event{
+					Type: DeleteEvent,
+					Obj:  obj,
+				}
+			}
+		},
 		UpdateFunc: func(old, cur interface{}) {
 			oldSvc := old.(*corev1.Service)
 			curSvc := cur.(*corev1.Service)
